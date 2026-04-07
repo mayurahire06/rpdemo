@@ -1,2 +1,6 @@
+
+#ignore these files
+
 venv
 dataset
+__pycache__
