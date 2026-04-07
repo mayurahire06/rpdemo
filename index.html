@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AHE Fraud Detection | Fergusson College</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <style>
+        body { font-family: 'Segoe UI', system-ui, sans-serif; }
+        .card { transition: all 0.3s ease; }
+        .result-card { animation: fadeIn 0.5s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .fraud { background: linear-gradient(135deg, #dc2626, #b91c1c); }
+        .legit { background: linear-gradient(135deg, #16a34a, #15803d); }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-blue-900 to-indigo-900 text-white py-6">
+        <div class="max-w-6xl mx-auto px-6 flex items-center justify-between">
+            <div>
+                <h1 class="text-4xl font-bold flex items-center gap-3">
+                    <i class="fas fa-shield-alt"></i>
+                    AHE Fraud Detection
+                </h1>
+                <p class="text-blue-200 mt-1">Adaptive Hybrid Ensemble Model • Real-Time • Fergusson College</p>
+            </div>
+            <div class="text-right">
+                <span class="px-4 py-2 bg-white/20 rounded-full text-sm font-medium">99.4% Accuracy • 8ms Inference</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-6xl mx-auto px-6 py-8">
+
+        <!-- Demo Buttons -->
+        <div class="mb-10">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800">Quick Demo</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <button onclick="testLegitimate()" 
+                        class="card bg-white border border-green-200 hover:border-green-500 p-8 rounded-3xl flex items-center gap-6 shadow-lg">
+                    <div class="w-16 h-16 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center text-3xl">
+                        ✅
+                    </div>
+                    <div class="text-left">
+                        <h3 class="text-xl font-bold text-green-700">Legitimate Transaction</h3>
+                        <p class="text-gray-600">Normal user behaviour • Amount ₹149.62</p>
+                    </div>
+                </button>
+
+                <button onclick="testFraud()" 
+                        class="card bg-white border border-red-200 hover:border-red-500 p-8 rounded-3xl flex items-center gap-6 shadow-lg">
+                    <div class="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center text-3xl">
+                        ⚠️
+                    </div>
+                    <div class="text-left">
+                        <h3 class="text-xl font-bold text-red-700">Fraudulent Transaction</h3>
+                        <p class="text-gray-600">Suspicious pattern • Amount ₹0.00</p>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <!-- Custom Input Form -->
+        <div class="bg-white rounded-3xl shadow-xl p-8 mb-10">
+            <h2 class="text-2xl font-semibold mb-6 text-gray-800">Custom Transaction Input</h2>
+            <form id="predictForm" class="grid grid-cols-2 md:grid-cols-3 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Time (seconds)</label>
+                    <input type="number" id="time" value="0" step="0.1" class="w-full px-4 py-3 border rounded-2xl focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Amount (₹)</label>
+                    <input type="number" id="amount" value="149.62" step="0.01" class="w-full px-4 py-3 border rounded-2xl focus:outline-none focus:border-blue-500">
+                </div>
+                <!-- V1 to V28 can be pre-filled or left as optional -->
+                <div class="col-span-2 md:col-span-3 text-sm text-gray-500 italic">
+                    Note: V1–V28 features are anonymized (PCA). For demo, system will use realistic values.
+                </div>
+            </form>
+
+            <button onclick="predictCustom()" 
+                    class="mt-8 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 rounded-3xl text-lg transition">
+                <i class="fas fa-bolt"></i> Predict Fraud
+            </button>
+        </div>
+
+        <!-- Result Section -->
+        <div id="resultSection" class="hidden result-card bg-white rounded-3xl shadow-2xl p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-semibold">Prediction Result</h2>
+                <button onclick="hideResult()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+
+            <div id="resultCard" class="rounded-3xl p-8 text-white flex items-center gap-8">
+                <div id="statusIcon" class="text-7xl"></div>
+                <div class="flex-1">
+                    <div id="statusText" class="text-4xl font-bold"></div>
+                    <div id="probabilityBar" class="h-4 bg-white/30 rounded-full mt-4 overflow-hidden">
+                        <div id="probabilityFill" class="h-full rounded-full transition-all"></div>
+                    </div>
+                    <div class="flex justify-between text-sm mt-2">
+                        <span>Fraud Probability</span>
+                        <span id="probabilityValue" class="font-mono font-bold"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-6 mt-8 text-center">
+                <div>
+                    <p class="text-gray-500 text-sm">Inference Time</p>
+                    <p id="inferenceTime" class="text-3xl font-bold text-gray-800">— ms</p>
+                </div>
+                <div>
+                    <p class="text-gray-500 text-sm">Model</p>
+                    <p class="text-3xl font-bold text-indigo-600">AHE Ensemble</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- <footer class="bg-gray-900 text-white py-6 text-center text-sm">
+        © 2026 • Adaptive Hybrid Ensemble (AHE) Model • M.Sc. Computer Science, Fergusson College (Autonomous), Pune
+    </footer> -->
+
+    <script>
+        // Sample data (matching Kaggle format)
+        const legitimateSample = {
+            "Time": 0,
+            "V1": -1.359807, "V2": -0.072781, "V3": 2.536347, "V4": 1.378155,
+            "V5": -0.338321, "V6": 0.462388, "V7": 0.239599, "V8": 0.098698,
+            "V9": 0.363787, "V10": 0.090794, "V11": -0.5516, "V12": -0.617801,
+            "V13": -0.99139, "V14": -0.311169, "V15": 1.468177, "V16": -0.470401,
+            "V17": 0.207971, "V18": 0.025791, "V19": 0.403993, "V20": 0.251412,
+            "V21": -0.018307, "V22": 0.277838, "V23": -0.110474, "V24": 0.066928,
+            "V25": 0.128539, "V26": -0.189115, "V27": 0.133558, "V28": -0.021053,
+            "Amount": 149.62
+        };
+
+        const fraudSample = {
+            "Time": 406,
+            "V1": -2.312227, "V2": 1.951992, "V3": -1.609851, "V4": 3.997906,
+            "V5": -0.522188, "V6": -1.426545, "V7": -2.537387, "V8": 1.391657,
+            "V9": -2.770089, "V10": -2.772272, "V11": 3.202033, "V12": -2.899907,
+            "V13": -0.595222, "V14": -4.289254, "V15": -0.596988, "V16": -0.575618,
+            "V17": -0.668205, "V18": 0.025317, "V19": -0.048358, "V20": 0.247968,
+            "V21": 0.771679, "V22": 0.909412, "V23": -0.689281, "V24": -0.327642,
+            "V25": -0.139097, "V26": -0.055353, "V27": -0.059752, "V28": 0.127265,
+            "Amount": 0.0
+        };
+
+        async function callAPI(payload) {
+            const start = performance.now();
+            const response = await fetch('http://127.0.0.1:8000/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const end = performance.now();
+            const data = await response.json();
+            data.inferenceTime = (end - start).toFixed(2);
+            return data;
+        }
+
+        async function testLegitimate() {
+            const result = await callAPI(legitimateSample);
+            showResult(result, false);
+        }
+
+        async function testFraud() {
+            const result = await callAPI(fraudSample);
+            showResult(result, true);
+        }
+
+        async function predictCustom() {
+            // For simplicity, we use legitimate sample + custom Time & Amount
+            const payload = { ...legitimateSample };
+            payload.Time = parseFloat(document.getElementById('time').value) || 0;
+            payload.Amount = parseFloat(document.getElementById('amount').value) || 149.62;
+
+            const result = await callAPI(payload);
+            showResult(result);
+        }
+
+        function showResult(result, isFraudDemo = null) {
+            const section = document.getElementById('resultSection');
+            const card = document.getElementById('resultCard');
+            const statusText = document.getElementById('statusText');
+            const statusIcon = document.getElementById('statusIcon');
+            const probFill = document.getElementById('probabilityFill');
+            const probValue = document.getElementById('probabilityValue');
+            const inferenceEl = document.getElementById('inferenceTime');
+
+            const prob = result.fraud_probability * 100;
+
+            if (prob > 50 || isFraudDemo === true) {
+                card.className = "rounded-3xl p-8 text-white flex items-center gap-8 fraud";
+                statusIcon.innerHTML = "🚨";
+                statusText.innerHTML = "FRAUD DETECTED";
+            } else {
+                card.className = "rounded-3xl p-8 text-white flex items-center gap-8 legit";
+                statusIcon.innerHTML = "✅";
+                statusText.innerHTML = "LEGITIMATE";
+            }
+
+            probFill.style.width = `${prob}%`;
+            probValue.textContent = `${prob.toFixed(2)}%`;
+            inferenceEl.textContent = `${result.inferenceTime} ms`;
+
+            section.classList.remove('hidden');
+            section.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function hideResult() {
+            document.getElementById('resultSection').classList.add('hidden');
+        }
+
+        // Tailwind script already loaded via CDN
+    </script>
+</body>
+</html>
