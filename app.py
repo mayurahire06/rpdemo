@@ -1,79 +1,151 @@
-# app.py
-from fastapi import FastAPI
+# app_fixed.py
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 import pandas as pd
 import joblib
+import os
+import sys
 
 app = FastAPI(title="AHE Credit Card Fraud Detection API")
 
-# ====================== CORS FIX ======================
+# CORS Fix
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],                    # Allows all origins (for development)
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],                    # Allows all methods (GET, POST, etc.)
-    allow_headers=["*"],                    # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
-# =====================================================
 
-# Load trained models
-lgb_model = joblib.load("models/lgb_model.pkl")
-lr_model = joblib.load("models/lr_model.pkl")
-nn_model = joblib.load("models/nn_model.pkl")
+# ==================== LOAD MODELS ====================
+try:
+    print("🔄 Loading models...")
+    lgb_model = joblib.load("models/lgb_model.pkl")
+    lr_model = joblib.load("models/lr_model.pkl")
+    nn_model = joblib.load("models/nn_model.pkl")
+    print("✅ Models loaded successfully!")
+except FileNotFoundError as e:
+    print(f"❌ ERROR: Models not found - {e}")
+    print("Run trainer.py first to generate models!")
+    sys.exit(1)
+
+# ==================== LOAD ENCODERS ====================
+try:
+    print("🔄 Loading encoders...")
+    le_category = joblib.load("models/le_category.pkl")
+    le_gender = joblib.load("models/le_gender.pkl")
+    le_state = joblib.load("models/le_state.pkl")
+    print("✅ Encoders loaded successfully!")
+except FileNotFoundError as e:
+    print(f"❌ ERROR: Encoders not found - {e}")
+    sys.exit(1)
+
+# ==================== GET VALID VALUES ====================
+valid_categories = list(le_category.classes_)
+valid_genders = list(le_gender.classes_)
+valid_states = list(le_state.classes_)
+
+print(f"\n📋 Valid Categories: {valid_categories}")
+print(f"📋 Valid Genders: {valid_genders}")
+print(f"📋 Valid States: {valid_states}\n")
 
 class Transaction(BaseModel):
-    Time: float
-    V1: float
-    V2: float
-    V3: float
-    V4: float
-    V5: float
-    V6: float
-    V7: float
-    V8: float
-    V9: float
-    V10: float
-    V11: float
-    V12: float
-    V13: float
-    V14: float
-    V15: float
-    V16: float
-    V17: float
-    V18: float
-    V19: float
-    V20: float
-    V21: float
-    V22: float
-    V23: float
-    V24: float
-    V25: float
-    V26: float
-    V27: float
-    V28: float
-    Amount: float
+    amt: float
+    category: str
+    gender: str
+    state: str
+
+class HealthCheck(BaseModel):
+    status: str
+    valid_categories: list
+    valid_genders: list
+    valid_states: list
 
 def ahe_predict_proba(data):
+    """AHE Weighted Ensemble Prediction"""
     lgb_prob = lgb_model.predict_proba(data)[:, 1][0]
-    lr_prob = lr_model.predict_proba(data)[:, 1][0]
-    nn_prob = nn_model.predict_proba(data)[:, 1][0]
-    return 0.45 * lgb_prob + 0.30 * lr_prob + 0.25 * nn_prob
+    lr_prob  = lr_model.predict_proba(data)[:, 1][0]
+    nn_prob  = nn_model.predict_proba(data)[:, 1][0]
+    
+    # AHE Weighted Ensemble (45% LGB, 30% LR, 25% NN)
+    ensemble_prob = 0.45 * lgb_prob + 0.30 * lr_prob + 0.25 * nn_prob
+    return ensemble_prob
 
-@app.post("/predict")
-def predict(transaction: Transaction):
-    input_df = pd.DataFrame([transaction.dict()])
-    prob = ahe_predict_proba(input_df)
-    is_fraud = prob > 0.5
-
+@app.get("/health")
+def health_check():
+    """Returns valid input values for debugging"""
     return {
-        "fraud_probability": round(float(prob), 4),
-        "is_fraud": bool(is_fraud),
-        "inference_ms": 8.5,
-        "message": "Fraud Detected!" if is_fraud else "Transaction is Legitimate"
+        "status": "✅ API is running",
+        "valid_categories": valid_categories,
+        "valid_genders": valid_genders,
+        "valid_states": valid_states
     }
 
-# Run the server
+@app.post("/predict")
+def predict(tx: Transaction):
+    """Predict fraud probability for a transaction"""
+    try:
+        # ==================== VALIDATION ====================
+        if tx.category not in valid_categories:
+            raise HTTPException(
+                status_code=400,
+                detail=f"❌ Invalid category: '{tx.category}'. Valid options: {valid_categories}"
+            )
+        
+        if tx.gender not in valid_genders:
+            raise HTTPException(
+                status_code=400,
+                detail=f"❌ Invalid gender: '{tx.gender}'. Valid options: {valid_genders}"
+            )
+        
+        if tx.state not in valid_states:
+            raise HTTPException(
+                status_code=400,
+                detail=f"❌ Invalid state: '{tx.state}'. Valid options: {valid_states}"
+            )
+        
+        if tx.amt < 0:
+            raise HTTPException(
+                status_code=400,
+                detail="❌ Amount cannot be negative"
+            )
+
+        # ==================== ENCODING ====================
+        cat_encoded = le_category.transform([tx.category])[0]
+        gen_encoded = le_gender.transform([tx.gender])[0]
+        state_encoded = le_state.transform([tx.state])[0]
+
+        input_df = pd.DataFrame(
+            [[tx.amt, cat_encoded, gen_encoded, state_encoded]],
+            columns=['amt', 'category', 'gender', 'state']
+        )
+
+        # ==================== PREDICTION ====================
+        prob = ahe_predict_proba(input_df)
+        is_fraud = prob > 0.40  # AHE threshold
+
+        return {
+            "success": True,
+            "fraud_probability": round(float(prob), 4),
+            "is_fraud": bool(is_fraud),
+            "message": "🚨 Fraud Detected!" if is_fraud else "✅ Legitimate Transaction",
+            "inference_ms": 8.5,
+            "model_weights": {
+                "lgb": 0.45,
+                "lr": 0.30,
+                "nn": 0.25
+            }
+        }
+    
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000, reload=False)

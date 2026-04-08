@@ -1,4 +1,4 @@
-# trainer.py
+# trainer_fixed.py
 import pandas as pd
 import joblib
 import os
@@ -11,9 +11,14 @@ import lightgbm as lgb
 
 print("🔄 Loading fraudTrain.csv for AHE Model...")
 
-df = pd.read_csv('dataset/fraudTrain.csv')
+try:
+    df = pd.read_csv('dataset/fraudTrain.csv')
+except FileNotFoundError:
+    print("❌ ERROR: fraudTrain.csv not found!")
+    print("Make sure 'dataset/fraudTrain.csv' exists in the working directory.")
+    exit(1)
 
-# === Dataset Info (as you requested) ===
+# === Dataset Info ===
 print(f"\n📊 Original Dataset Shape     : {df.shape}")
 print(f"📊 Total Transactions         : {df.shape[0]:,}")
 print(f"📊 Total Features (Columns)   : {df.shape[1]}")
@@ -33,7 +38,18 @@ print(df.head().to_string(index=False))
 useful_cols = ['amt', 'category', 'gender', 'state', 'is_fraud']
 df = df[useful_cols].copy()
 
+print("\n" + "="*80)
+print("🔍 UNIQUE VALUES (What Encoders Will Learn):")
+print("="*80)
+print(f"\n📌 CATEGORIES ({len(df['category'].unique())}): {sorted(df['category'].unique().tolist())}")
+print(f"📌 GENDERS ({len(df['gender'].unique())}): {sorted(df['gender'].unique().tolist())}")
+print(f"📌 STATES ({len(df['state'].unique())}): {sorted(df['state'].unique().tolist())}")
+
 # ====================== LABEL ENCODING ======================
+print("\n" + "="*80)
+print("🔄 ENCODING CATEGORICAL FEATURES:")
+print("="*80)
+
 le_category = LabelEncoder()
 le_gender = LabelEncoder()
 le_state = LabelEncoder()
@@ -42,32 +58,89 @@ df['category'] = le_category.fit_transform(df['category'])
 df['gender'] = le_gender.fit_transform(df['gender'])
 df['state'] = le_state.fit_transform(df['state'])
 
+print(f"\n✅ Category Encoder Mapping:")
+for i, cat in enumerate(le_category.classes_):
+    print(f"   {cat:20} -> {i}")
+
+print(f"\n✅ Gender Encoder Mapping:")
+for i, gen in enumerate(le_gender.classes_):
+    print(f"   {gen:20} -> {i}")
+
+print(f"\n✅ State Encoder Mapping (showing first 10):")
+for i, state in enumerate(le_state.classes_[:10]):
+    print(f"   {state:20} -> {i}")
+if len(le_state.classes_) > 10:
+    print(f"   ... and {len(le_state.classes_)-10} more states")
+
 X = df.drop('is_fraud', axis=1)
 y = df['is_fraud']
 
 # ====================== BALANCING ======================
-print("\n🔄 Balancing with SMOTE + Tomek...")
+print("\n" + "="*80)
+print("🔄 BALANCING WITH SMOTE + TOMEK:")
+print("="*80)
+print(f"Before balancing - Fraud: {(y==1).sum()}, Legitimate: {(y==0).sum()}")
+
 smote_tomek = SMOTETomek(random_state=42)
 X_res, y_res = smote_tomek.fit_resample(X, y)
+
+print(f"After balancing  - Fraud: {(y_res==1).sum()}, Legitimate: {(y_res==0).sum()}")
 
 X_train, X_test, y_train, y_test = train_test_split(
     X_res, y_res, test_size=0.2, random_state=42, stratify=y_res
 )
 
-# ====================== AHE TRAINING (3 Models) ======================
-print("\n🚀 Training LightGBM (Part of AHE)...")
-lgb_model = lgb.LGBMClassifier(n_estimators=300, learning_rate=0.05, random_state=42)
-lgb_model.fit(X_train, y_train)
+print(f"\nTrain set - Fraud: {(y_train==1).sum()}, Legitimate: {(y_train==0).sum()}")
+print(f"Test set  - Fraud: {(y_test==1).sum()}, Legitimate: {(y_test==0).sum()}")
 
-print("🚀 Training Logistic Regression (Part of AHE)...")
+# ====================== AHE TRAINING (3 Models) ======================
+print("\n" + "="*80)
+print("🚀 TRAINING AHE (3-MODEL ENSEMBLE):")
+print("="*80)
+
+print("\n1️⃣ Training LightGBM (45% weight)...")
+lgb_model = lgb.LGBMClassifier(
+    n_estimators=300, 
+    learning_rate=0.05, 
+    random_state=42,
+    verbose=-1
+)
+lgb_model.fit(X_train, y_train)
+lgb_score = lgb_model.score(X_test, y_test)
+print(f"   ✅ LGB Test Accuracy: {lgb_score:.4f}")
+
+print("\n2️⃣ Training Logistic Regression (30% weight)...")
 lr_model = LogisticRegression(max_iter=1000, random_state=42)
 lr_model.fit(X_train, y_train)
+lr_score = lr_model.score(X_test, y_test)
+print(f"   ✅ LR Test Accuracy: {lr_score:.4f}")
 
-print("🚀 Training Neural Network MLP (Part of AHE)...")
-nn_model = MLPClassifier(hidden_layer_sizes=(128, 64), activation='relu',
-                         solver='adam', max_iter=300, early_stopping=True,
-                         random_state=42)
+print("\n3️⃣ Training Neural Network MLP (25% weight)...")
+nn_model = MLPClassifier(
+    hidden_layer_sizes=(128, 64), 
+    activation='relu',
+    solver='adam', 
+    max_iter=300, 
+    early_stopping=True,
+    random_state=42,
+    verbose=False
+)
 nn_model.fit(X_train, y_train)
+nn_score = nn_model.score(X_test, y_test)
+print(f"   ✅ NN Test Accuracy: {nn_score:.4f}")
+
+# Ensemble prediction
+from sklearn.metrics import classification_report, confusion_matrix
+lgb_pred = lgb_model.predict_proba(X_test)[:, 1]
+lr_pred = lr_model.predict_proba(X_test)[:, 1]
+nn_pred = nn_model.predict_proba(X_test)[:, 1]
+ensemble_pred = 0.45 * lgb_pred + 0.30 * lr_pred + 0.25 * nn_pred
+ensemble_pred_class = (ensemble_pred > 0.40).astype(int)
+ensemble_score = (ensemble_pred_class == y_test).mean()
+print(f"\n🎯 AHE Ensemble Test Accuracy: {ensemble_score:.4f}")
+
+print("\n📊 Classification Report (Ensemble on Test Set):")
+print(classification_report(y_test, ensemble_pred_class, target_names=['Legitimate', 'Fraud']))
 
 # ====================== SAVE AHE MODELS & ENCODERS ======================
 os.makedirs("models", exist_ok=True)
@@ -80,5 +153,14 @@ joblib.dump(le_category, "models/le_category.pkl")
 joblib.dump(le_gender, "models/le_gender.pkl")
 joblib.dump(le_state, "models/le_state.pkl")
 
-print("\n✅ AHE Model (3 base models + encoders) saved successfully!")
-print("🎉 Adaptive Hybrid Ensemble Training Completed!")
+print("\n" + "="*80)
+print("✅ AHE Model Training Complete!")
+print("="*80)
+print("📁 Saved Models:")
+print("   ✓ models/lgb_model.pkl")
+print("   ✓ models/lr_model.pkl")
+print("   ✓ models/nn_model.pkl")
+print("   ✓ models/le_category.pkl")
+print("   ✓ models/le_gender.pkl")
+print("   ✓ models/le_state.pkl")
+print("\n🎉 Ready to use with app.py!")

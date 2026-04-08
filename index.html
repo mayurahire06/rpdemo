@@ -3,158 +3,232 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AHE Fraud Detection | Fergusson College</title>
+    <title>AHE Fraud Detection</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        .result-card { animation: popIn 0.4s ease; }
-        @keyframes popIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-    </style>
 </head>
 <body class="bg-gray-950 text-white">
 
-    <div class="max-w-5xl mx-auto px-6 py-12">
-        <div class="text-center mb-12">
-            <h1 class="text-5xl font-bold flex items-center justify-center gap-4">
-                <i class="fas fa-shield-alt text-blue-500"></i>
-                AHE Fraud Detection
-            </h1>
-            <p class="text-blue-400 text-xl mt-2">Adaptive Hybrid Ensemble Model • Real-Time • 99.4% Accuracy</p>
-        </div>
+<div class="max-w-4xl mx-auto px-6 py-12">
+    <h1 class="text-5xl font-bold text-center mb-2">AHE Fraud Detection</h1>
+    <p class="text-center text-blue-400 mb-12">Adaptive Hybrid Ensemble Model</p>
 
-        <!-- Quick Demo Buttons -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-            <button onclick="testLegit()" 
-                    class="bg-green-600 hover:bg-green-700 p-8 rounded-3xl text-left flex gap-6 items-center transition">
-                <div class="text-5xl">✅</div>
-                <div>
-                    <h3 class="text-2xl font-semibold">Legitimate Transaction</h3>
-                    <p class="text-green-100">Normal behaviour</p>
-                </div>
-            </button>
-            <button onclick="testFraud()" 
-                    class="bg-red-600 hover:bg-red-700 p-8 rounded-3xl text-left flex gap-6 items-center transition">
-                <div class="text-5xl">🚨</div>
-                <div>
-                    <h3 class="text-2xl font-semibold">Fraudulent Transaction</h3>
-                    <p class="text-red-100">Suspicious pattern</p>
-                </div>
-            </button>
-        </div>
+    <!-- Status Check -->
+    <div id="statusCheck" class="bg-yellow-500/20 border border-yellow-500 rounded-2xl p-4 mb-8 text-center">
+        ⏳ Checking backend connection...
+    </div>
 
-        <!-- Custom Input Form -->
-        <div class="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-8 mb-12">
-            <h2 class="text-2xl font-semibold mb-6">Custom Transaction Input</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label class="block text-sm text-gray-400 mb-2">Time (seconds since first transaction)</label>
-                    <input type="number" id="time" value="0" step="0.1"
-                           class="w-full bg-gray-900 border border-gray-700 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-blue-500">
-                </div>
-                <div>
-                    <label class="block text-sm text-gray-400 mb-2">Amount (₹)</label>
-                    <input type="number" id="amount" value="149.62" step="0.01"
-                           class="w-full bg-gray-900 border border-gray-700 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-blue-500">
-                </div>
-            </div>
-
-            <button onclick="predictCustom()" 
-                    class="mt-8 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-5 rounded-3xl text-lg flex items-center justify-center gap-3">
-                <i class="fas fa-bolt"></i>
-                Predict Fraud / Legitimate
-            </button>
-            
-            <p class="text-center text-xs text-gray-500 mt-4">
-                V1–V28 features are automatically filled with realistic values from the dataset
-            </p>
-        </div>
-
-        <!-- Result Section -->
-        <div id="result" class="hidden result-card bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-8">
-            <div class="flex justify-between items-start">
-                <h2 class="text-3xl font-semibold" id="title">Prediction Result</h2>
-                <button onclick="hideResult()" class="text-3xl text-gray-400 hover:text-white">✕</button>
+    <div class="bg-white/10 backdrop-blur-xl rounded-3xl p-8">
+        <h2 class="text-2xl font-semibold mb-6">Enter Transaction Details</h2>
+        
+        <div class="grid grid-cols-2 gap-6">
+            <!-- Amount Input -->
+            <div>
+                <label class="block text-sm mb-2">Purchase Amount (₹)</label>
+                <input id="amt" type="number" value="150.00" step="0.01" min="0"
+                       class="w-full bg-gray-900 border border-gray-700 rounded-2xl px-5 py-4 text-white focus:border-blue-500 outline-none">
             </div>
             
-            <div id="status" class="mt-8 p-8 rounded-2xl text-center text-6xl font-bold min-h-[180px]"></div>
-            
-            <div class="mt-6 flex justify-between text-xl">
-                <div>Fraud Probability: <span id="prob" class="font-mono text-blue-400"></span></div>
-                <div>Inference Time: <span id="time" class="font-mono text-blue-400">8.5 ms</span></div>
+            <!-- Category Select -->
+            <div>
+                <label class="block text-sm mb-2">Category</label>
+                <select id="category" class="w-full bg-gray-900 border border-gray-700 rounded-2xl px-5 py-4 focus:border-blue-500 outline-none">
+                    <option value="">⏳ Loading categories...</option>
+                </select>
+            </div>
+
+            <!-- Gender Select -->
+            <div>
+                <label class="block text-sm mb-2">Gender</label>
+                <select id="gender" class="w-full bg-gray-900 border border-gray-700 rounded-2xl px-5 py-4 focus:border-blue-500 outline-none">
+                    <option value="">⏳ Loading genders...</option>
+                </select>
+            </div>
+
+            <!-- State Input -->
+            <div>
+                <label class="block text-sm mb-2">State (2 letters)</label>
+                <input id="state" value="" maxlength="2" placeholder="TX"
+                       class="w-full bg-gray-900 border border-gray-700 rounded-2xl px-5 py-4 text-white uppercase focus:border-blue-500 outline-none">
+            </div>
+        </div>
+
+        <button id="predictBtn" onclick="predict()" disabled
+                class="mt-8 w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed py-5 rounded-3xl text-lg font-semibold transition">
+            Predict with AHE Model
+        </button>
+    </div>
+
+    <!-- Result Section -->
+    <div id="result" class="hidden mt-8 bg-white/10 backdrop-blur-xl rounded-3xl p-8">
+        <div id="status" class="text-6xl font-bold py-8 rounded-2xl text-center"></div>
+        <p id="probText" class="text-2xl mt-4 text-center"></p>
+        <div id="details" class="mt-6 grid grid-cols-3 gap-4 text-center text-sm">
+            <div class="bg-white/5 rounded-lg p-3">
+                <p class="text-gray-400">Amount</p>
+                <p id="detailAmt" class="font-semibold"></p>
+            </div>
+            <div class="bg-white/5 rounded-lg p-3">
+                <p class="text-gray-400">Category</p>
+                <p id="detailCat" class="font-semibold"></p>
+            </div>
+            <div class="bg-white/5 rounded-lg p-3">
+                <p class="text-gray-400">State</p>
+                <p id="detailState" class="font-semibold"></p>
             </div>
         </div>
     </div>
 
-    <script>
-        const API_URL = "http://127.0.0.1:8000/predict";
+    <!-- Error Section -->
+    <div id="errorSection" class="hidden mt-8 bg-red-500/20 border border-red-500 rounded-3xl p-8">
+        <p class="text-red-400 text-center"><i class="fas fa-exclamation-triangle mr-2"></i></p>
+        <p id="errorText" class="text-red-300 text-center mt-2"></p>
+    </div>
+</div>
 
-        // Base samples (V1-V28 values)
-        const baseSample = {
-            "V1":-1.359807,"V2":-0.072781,"V3":2.536347,"V4":1.378155,"V5":-0.338321,
-            "V6":0.462388,"V7":0.239599,"V8":0.098698,"V9":0.363787,"V10":0.090794,
-            "V11":-0.5516,"V12":-0.617801,"V13":-0.99139,"V14":-0.311169,"V15":1.468177,
-            "V16":-0.470401,"V17":0.207971,"V18":0.025791,"V19":0.403993,"V20":0.251412,
-            "V21":-0.018307,"V22":0.277838,"V23":-0.110474,"V24":0.066928,"V25":0.128539,
-            "V26":-0.189115,"V27":0.133558,"V28":-0.021053
+<script>
+    let validCategories = [];
+    let validGenders = [];
+    let validStates = [];
+
+    // ==================== LOAD VALID VALUES ====================
+    async function initializeForm() {
+        try {
+            const response = await fetch('http://127.0.0.1:8000/health');
+            if (!response.ok) throw new Error(`Health check failed: ${response.status}`);
+            
+            const data = await response.json();
+            validCategories = data.valid_categories;
+            validGenders = data.valid_genders;
+            validStates = data.valid_states;
+
+            // Populate dropdowns
+            populateDropdown('category', validCategories);
+            populateDropdown('gender', validGenders);
+
+            // Update status
+            document.getElementById('statusCheck').innerHTML = '✅ Backend connected! Ready to predict.';
+            document.getElementById('statusCheck').className = 'bg-green-500/20 border border-green-500 rounded-2xl p-4 mb-8 text-center';
+            document.getElementById('predictBtn').disabled = false;
+
+            console.log('✅ Form initialized with valid values');
+            console.log('Categories:', validCategories);
+            console.log('Genders:', validGenders);
+            console.log('States:', validStates);
+
+        } catch (err) {
+            console.error('❌ Failed to load valid values:', err);
+            document.getElementById('statusCheck').innerHTML = `❌ Backend not responding: ${err.message}<br>Make sure FastAPI is running on http://127.0.0.1:8000`;
+            document.getElementById('statusCheck').className = 'bg-red-500/20 border border-red-500 rounded-2xl p-4 mb-8 text-center';
+        }
+    }
+
+    function populateDropdown(elementId, values) {
+        const select = document.getElementById(elementId);
+        select.innerHTML = '';
+        values.forEach(value => {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = value;
+            select.appendChild(option);
+        });
+    }
+
+    // ==================== PREDICT FUNCTION ====================
+    async function predict() {
+        const errorSection = document.getElementById('errorSection');
+        const errorText = document.getElementById('errorText');
+        errorSection.classList.add('hidden');
+        errorText.textContent = '';
+
+        const amt = parseFloat(document.getElementById('amt').value);
+        const category = document.getElementById('category').value;
+        const gender = document.getElementById('gender').value;
+        const state = document.getElementById('state').value.toUpperCase().trim();
+
+        // Basic validation
+        if (!amt || amt <= 0) {
+            showError('❌ Please enter a valid amount');
+            return;
+        }
+        if (!category) {
+            showError('❌ Please select a category');
+            return;
+        }
+        if (!gender) {
+            showError('❌ Please select a gender');
+            return;
+        }
+        if (!state || state.length !== 2) {
+            showError('❌ Please enter a 2-letter state code');
+            return;
+        }
+
+        const payload = {
+            amt: amt,
+            category: category,
+            gender: gender,
+            state: state
         };
 
-        async function callAPI(payload) {
-            const res = await fetch(API_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
+        console.log("📤 Sending payload:", payload);
+
+        try {
+            const res = await fetch('http://127.0.0.1:8000/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            return await res.json();
-        }
 
-        async function testLegit() {
-            const payload = { Time: 0, Amount: 149.62, ...baseSample };
-            const data = await callAPI(payload);
-            showResult(data);
-        }
+            const data = await res.json();
+            console.log("📥 Response:", data);
 
-        async function testFraud() {
-            const payload = { Time: 406, Amount: 0.0, ...baseSample };
-            const data = await callAPI(payload);
-            showResult(data);
-        }
-
-        async function predictCustom() {
-            const time = parseFloat(document.getElementById('time').value) || 0;
-            const amount = parseFloat(document.getElementById('amount').value) || 0;
-
-            const payload = {
-                Time: time,
-                Amount: amount,
-                ...baseSample
-            };
-
-            const data = await callAPI(payload);
-            showResult(data);
-        }
-
-        function showResult(data) {
-            const resultDiv = document.getElementById('result');
-            const status = document.getElementById('status');
-            const probEl = document.getElementById('prob');
-
-            resultDiv.classList.remove('hidden');
-
-            if (data.is_fraud) {
-                status.innerHTML = `🚨 FRAUD DETECTED<br><span class="text-2xl">Probability: ${data.fraud_probability}</span>`;
-                status.style.backgroundColor = "#b91c1c";
-            } else {
-                status.innerHTML = `✅ LEGITIMATE<br><span class="text-2xl">Probability: ${data.fraud_probability}</span>`;
-                status.style.backgroundColor = "#15803d";
+            if (!res.ok) {
+                showError(`❌ ${data.detail || 'Prediction failed'}`);
+                return;
             }
-            probEl.textContent = data.fraud_probability;
+
+            // Show result
+            displayResult(data, payload);
+
+        } catch (err) {
+            console.error('❌ Network Error:', err);
+            showError(`❌ Connection failed: ${err.message}<br>Ensure FastAPI is running on http://127.0.0.1:8000`);
+        }
+    }
+
+    function displayResult(data, payload) {
+        const resultDiv = document.getElementById('result');
+        const status = document.getElementById('status');
+        const probText = document.getElementById('probText');
+
+        resultDiv.classList.remove('hidden');
+
+        if (data.is_fraud) {
+            status.innerHTML = '🚨 FRAUD DETECTED';
+            status.style.backgroundColor = '#b91c1c';
+        } else {
+            status.innerHTML = '✅ LEGITIMATE';
+            status.style.backgroundColor = '#15803d';
         }
 
-        function hideResult() {
-            document.getElementById('result').classList.add('hidden');
-        }
-    </script>
+        probText.textContent = `Fraud Probability: ${(data.fraud_probability * 100).toFixed(2)}%`;
+        
+        // Show details
+        document.getElementById('detailAmt').textContent = `₹${payload.amt.toFixed(2)}`;
+        document.getElementById('detailCat').textContent = payload.category;
+        document.getElementById('detailState').textContent = payload.state;
+    }
+
+    function showError(message) {
+        const errorSection = document.getElementById('errorSection');
+        const errorText = document.getElementById('errorText');
+        errorText.innerHTML = message;
+        errorSection.classList.remove('hidden');
+    }
+
+    // ==================== INITIALIZE ON PAGE LOAD ====================
+    window.addEventListener('load', initializeForm);
+</script>
 </body>
 </html>
