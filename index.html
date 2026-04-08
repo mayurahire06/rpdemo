@@ -14,9 +14,9 @@
     <p class="text-center text-blue-400 mb-12">Adaptive Hybrid Ensemble Model</p>
 
     <!-- Status Check -->
-    <div id="statusCheck" class="bg-yellow-500/20 border border-yellow-500 rounded-2xl p-4 mb-8 text-center">
+    <!-- <div id="statusCheck" class="bg-yellow-500/20 border border-yellow-500 rounded-2xl p-4 mb-8 text-center">
         ⏳ Checking backend connection...
-    </div>
+    </div> -->
 
     <div class="bg-white/10 backdrop-blur-xl rounded-3xl p-8">
         <h2 class="text-2xl font-semibold mb-6">Enter Transaction Details</h2>
@@ -62,7 +62,7 @@
     <!-- Result Section -->
     <div id="result" class="hidden mt-8 bg-white/10 backdrop-blur-xl rounded-3xl p-8">
         <div id="status" class="text-6xl font-bold py-8 rounded-2xl text-center"></div>
-        <p id="probText" class="text-2xl mt-4 text-center"></p>
+        <p id="probText" class="text-6xl font-bold py-8 rounded-2xl text-center"></p>
         <div id="details" class="mt-6 grid grid-cols-3 gap-4 text-center text-sm">
             <div class="bg-white/5 rounded-lg p-3">
                 <p class="text-gray-400">Amount</p>
@@ -107,8 +107,8 @@
             populateDropdown('gender', validGenders);
 
             // Update status
-            document.getElementById('statusCheck').innerHTML = '✅ Backend connected! Ready to predict.';
-            document.getElementById('statusCheck').className = 'bg-green-500/20 border border-green-500 rounded-2xl p-4 mb-8 text-center';
+            // document.getElementById('statusCheck').innerHTML = '✅ Backend connected! Ready to predict.';
+            // document.getElementById('statusCheck').className = 'bg-green-500/20 border border-green-500 rounded-2xl p-4 mb-8 text-center';
             document.getElementById('predictBtn').disabled = false;
 
             console.log('✅ Form initialized with valid values');
@@ -118,8 +118,8 @@
 
         } catch (err) {
             console.error('❌ Failed to load valid values:', err);
-            document.getElementById('statusCheck').innerHTML = `❌ Backend not responding: ${err.message}<br>Make sure FastAPI is running on http://127.0.0.1:8000`;
-            document.getElementById('statusCheck').className = 'bg-red-500/20 border border-red-500 rounded-2xl p-4 mb-8 text-center';
+            // document.getElementById('statusCheck').innerHTML = `❌ Backend not responding: ${err.message}<br>Make sure FastAPI is running on http://127.0.0.1:8000`;
+            // document.getElementById('statusCheck').className = 'bg-red-500/20 border border-red-500 rounded-2xl p-4 mb-8 text-center';
         }
     }
 
@@ -205,11 +205,13 @@
         resultDiv.classList.remove('hidden');
 
         if (data.is_fraud) {
-            status.innerHTML = '🚨 FRAUD DETECTED';
-            status.style.backgroundColor = '#b91c1c';
+            // status.innerHTML = '🚨 FRAUD DETECTED';
+            status.innerHTML = ' ';
+            // status.style.backgroundColor = '#b91c1c';
         } else {
-            status.innerHTML = '✅ LEGITIMATE';
-            status.style.backgroundColor = '#15803d';
+            // status.innerHTML = '✅ LEGITIMATE';
+            status.innerHTML = ' ';
+            // status.style.backgroundColor = '#15803d';
         }
 
         probText.textContent = `Fraud Probability: ${(data.fraud_probability * 100).toFixed(2)}%`;
