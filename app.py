@@ -9,7 +9,7 @@ import sys
 
 app = FastAPI(title="AHE Credit Card Fraud Detection API")
 
-# CORS Fix
+# Cross-Origin Resource Sharing (CORS)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -72,7 +72,7 @@ def ahe_predict_proba(data):
     ensemble_prob = 0.45 * lgb_prob + 0.30 * lr_prob + 0.25 * nn_prob
     return ensemble_prob
 
-@app.get("/health")
+@app.get("/health") # Health check endpoint is crucial for monitoring and debugging
 def health_check():
     """Returns valid input values for debugging"""
     return {
@@ -112,7 +112,7 @@ def predict(tx: Transaction):
             )
 
         # ==================== ENCODING ====================
-        cat_encoded = le_category.transform([tx.category])[0]
+        cat_encoded = le_category.transform([tx.category])[0] # Encode category[0] to get scalar means we have only one row of data
         gen_encoded = le_gender.transform([tx.gender])[0]
         state_encoded = le_state.transform([tx.state])[0]
 

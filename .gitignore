@@ -4,3 +4,5 @@
 venv
 dataset
 __pycache__/*
+sc/*
+models_old/*
